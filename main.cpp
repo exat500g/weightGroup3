@@ -20,42 +20,9 @@ public:
     static constexpr int MAX_ITEM=GROUP_SIZE*GROUP_NUM;
     using Int = int64_t;
     using UInt = uint32_t;
-    using Group = UInt[GROUP_SIZE];
-    using GroupItem = Group[GROUP_NUM];
-    //using GroupTable = QList<GroupItem>;
-
-    //GroupTable table;
     std::list<std::vector<int>> table;
 public:
-    //select m from n,get arrange situation of m
-    Int arrange(Int n,Int m){
-        Int sum=1;
-        m=n-m;
-        for(;n>m;n--){
-            sum*=n;
-        }
-        return sum;
-    }
-    //select m from n,get combine situation of m
-    Int combine(Int n,Int m){
-        Int sum1=1;
-        Int sum2=1;
-        Int sum3=1;
-        Int mmax=m;
-        if(mmax < n/2){
-            mmax = n-m;
-            m = n - mmax;
-        }
-        for(;n>mmax;n--){
-            sum1*=n;
-        }
-        for(;m>1;m--){
-            sum2*=m;
-        }
-        sum3 = sum1/sum2;
-        return sum3;
-    }
-    bool isSameGroup(std::vector<int> vec1,std::vector<int> vec2){
+    bool isSameGroup(std::vector<int> vec1,const std::vector<int>& vec2){
         if(vec1.size()!=vec2.size()){
             return false;
         }
@@ -68,89 +35,49 @@ public:
                         return false;
                     }
                     vec1[i]=GROUP_NUM;
-                    vec2[i]=GROUP_NUM;
                 }
                 if(vec1key == GROUP_NUM && vec1[i]!=vec1key){
                     vec1key=vec1[i];
                     vec2key=vec2[i];
                     vec1[i]=GROUP_NUM;
-                    vec2[i]=GROUP_NUM;
                 }
             }
         }
         return true;
     }
-    void initGroupTable(){
+    void initGroupTableAll(){
         std::vector<int> vec;
-        std::vector<int> vec0;
-        vec.assign({0,0,1,1,2,2});
-        /*vec.assign(MAX_ITEM,0);
+        vec.assign(MAX_ITEM,0);
         for(int i=0;i<MAX_ITEM;i++){
             vec[i]=i/GROUP_SIZE;
-        }*/
-        /*Int cnum=combine(15,5)*combine(10,5)/arrange(3,3);
-        std::cout<<"c(15,5)="<<combine(15,5)<<"\r\n";
-        std::cout<<"c(10,5)="<<combine(10,5)<<"\r\n";
-        std::cout<<"c(3,3) ="<<arrange(3,3)<<"\r\n";
-        std::cout<<"cnum ="<<cnum<<"\r\n";*/
-
-        /*for(int i=MAX_ITEM-5;i<MAX_ITEM;i++){
-            vec[i]=1;
-        }*/
-        //table.push_back(vec);
-        //for(Int i=0;i<cnum;i++){
+        }
         do{
-            bool duliplcated=false;
-            for(auto i=table.begin();i!=table.end();i++){
-                if(isSameGroup(*i,vec)){
-                    duliplcated=true;
+            table.push_back(vec);
+        }while(std::next_permutation(vec.begin(),vec.end()));
+        std::cout<<"table="<<table.size()<<"\r\n";
+    }
+    void removeDuplicated(){
+        for(auto i=table.rbegin();i!=table.rend();i++){
+            auto j=i;
+            j++;
+            for(;j!=table.rend();j++){
+                if(isSameGroup(*i,*j)){
+                    (*i)[0]=GROUP_NUM;
                     break;
                 }
             }
-            if(duliplcated==false){
-                table.push_back(vec);
-                std::cout<<"vec:";
-                for(const auto& i:vec){
-                  std::cout<<i<<',';
-                }
-                std::cout<<std::endl;
-            }else{
-                std::cout<<"dulipciated vec:";
-                for(const auto& i:vec){
-                  std::cout<<i<<',';
-                }
-                std::cout<<std::endl;
-                //std::cout<<"size="<<table.size()<<std::endl;
-            }
-            /*std::cout<<"vec:";
-            for(const auto& i:vec){
-              std::cout<<i<<',';
-            }
-            std::cout<<std::endl;*/
-            //table.push_back(vec);
-        }while(std::next_permutation(vec.begin(),vec.end()));
-        /*for(auto i=table.begin();table)
-        for(int i=0;i<table.size();i++){
-            if(isSameGroup(vec0,vec)){
-                std::cout<<"testing vec:";
-                for(const auto& i:vec){
-                  std::cout<<i<<',';
-                }
-                std::cout<<"    result="<<isSameGroup(vec0,vec)<<std::endl;
-            }
-        }*/
-        std::cout<<"table="<<table.size()<<"\r\n";
-        /*FILE *fp=fopen("table.txt","w+");
-        for(const std::vector<int>& vec:table){
-            for(const auto& i:vec){
-               fprintf(fp,"%d,",i);
-            }
-            fprintf(fp,"\n");
         }
-        fclose(fp);*/
+        std::cout<<"mark delete complete\r\n";
+        for(auto i=table.begin();i!=table.end();){
+            if((*i)[0]==GROUP_NUM){
+                i=table.erase(i);
+            }else{
+                i++;
+            }
+        }
     }
     void init(){
-        initGroupTable();
+        initGroupTableAll();
     }
     UInt test(const std::vector<int> data){
         UInt maxSum=0;
@@ -158,7 +85,8 @@ public:
         for(auto i=table.begin();i!=table.end();i++){
             UInt groupSum[GROUP_NUM]={0};
             for(int j=0;j<MAX_ITEM;j++){
-                groupSum[(*i)[j]] += data[j];
+                int group=(*i)[j];
+                groupSum[group] += data[j];
             }
             if(groupSum[0] > maxSum){
                 maxSum=groupSum[0];
@@ -178,10 +106,17 @@ int main(int argc, char *argv[])
     timer.restart();
     h.init();
     qDebug()<<"init cost time"<<timer.elapsed();
-    /*std::vector<int> data={1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
     timer.restart();
+    h.removeDuplicated();
+    qDebug()<<"remove duplicated cost time"<<timer.elapsed();
+    /*int maxitem=h.table.size();
+    for(int i=0;i<maxitem/2;i++){
+        h.table.pop_back();
+    }*/
+    timer.restart();
+    std::vector<int> data={1,2,3,4,5,6,7,8,9,10};
     auto maxSum=h.test(data);
     std::cout<<"maxSum="<<maxSum<<"\r\n";
-    qDebug()<<"test cost time"<<timer.elapsed();*/
+    qDebug()<<"test cost time"<<timer.elapsed()<<"real table="<<h.table.size();
     return a.exec();
 }
