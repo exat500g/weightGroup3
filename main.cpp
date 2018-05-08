@@ -7,79 +7,56 @@
 #include <algorithm>
 #include <stdio.h>
 #include <stdlib.h>
+#include <set>
 
 //static_assert(GROUP_MAX_ITEM<sizeof(UInt)*8,"invalid BITNUM");
 //using Bit = std::bitset<BITNUM>;
 
-class Grouper{
+template<int GROUP_SIZE,int GROUP_NUM>
+class BaseGrouper{
 public:
     //EG:GROUP_SIZE=5,GROUP_NUM=3
     //[1,1,1,1,1,2,2,2,2,2,3,3,3,3,3]
-    static constexpr int GROUP_SIZE=5;
-    static constexpr int GROUP_NUM=3;
+    //static constexpr int GROUP_SIZE=5;
+    //static constexpr int GROUP_NUM=3;
     static constexpr int MAX_ITEM=GROUP_SIZE*GROUP_NUM;
     using Int = int64_t;
     using UInt = uint32_t;
-    std::list<std::vector<int>> table;
+    using Group = std::array<int,MAX_ITEM>;
+    std::list<Group> table;
+    std::set<std::array<int,GROUP_NUM>> sortedSet;
 public:
-    bool isSameGroup(std::vector<int> vec1,const std::vector<int>& vec2){
-        if(vec1.size()!=vec2.size()){
-            return false;
+    bool isGroupUnique(Group group){
+        std::array<std::bitset<MAX_ITEM>,GROUP_NUM> bitgroup;
+        for(size_t i=0;i<MAX_ITEM;i++){
+            bitgroup[group[i]][i]=1;
         }
-        for(int j=0;j<GROUP_NUM;j++){
-            int vec1key=GROUP_NUM;
-            int vec2key=GROUP_NUM;
-            for(size_t i=0;i<vec1.size();i++){
-                if(vec1key != GROUP_NUM && vec1key==vec1[i]){
-                    if(vec2key != vec2[i]){
-                        return false;
-                    }
-                    vec1[i]=GROUP_NUM;
-                }
-                if(vec1key == GROUP_NUM && vec1[i]!=vec1key){
-                    vec1key=vec1[i];
-                    vec2key=vec2[i];
-                    vec1[i]=GROUP_NUM;
-                }
-            }
+        std::array<int,GROUP_NUM> idgroup;
+        for(int i=0;i<GROUP_NUM;i++){
+            idgroup[i]=bitgroup[i].to_ulong();
         }
-        return true;
+        std::sort(idgroup.begin(),idgroup.end());
+        auto it=sortedSet.find(idgroup);
+        if(it==sortedSet.end()){
+            sortedSet.insert(idgroup);
+            return true;
+        }
+        return false;
     }
-    void initGroupTableAll(){
-        std::vector<int> vec;
-        vec.assign(MAX_ITEM,0);
+    void init(){
+        Group vec;
+        vec.fill(0);
         for(int i=0;i<MAX_ITEM;i++){
             vec[i]=i/GROUP_SIZE;
         }
         do{
-            table.push_back(vec);
+            if(isGroupUnique(vec)){
+                table.push_back(vec);
+            }
         }while(std::next_permutation(vec.begin(),vec.end()));
         std::cout<<"table="<<table.size()<<"\r\n";
     }
-    void removeDuplicated(){
-        for(auto i=table.rbegin();i!=table.rend();i++){
-            auto j=i;
-            j++;
-            for(;j!=table.rend();j++){
-                if(isSameGroup(*i,*j)){
-                    (*i)[0]=GROUP_NUM;
-                    break;
-                }
-            }
-        }
-        std::cout<<"mark delete complete\r\n";
-        for(auto i=table.begin();i!=table.end();){
-            if((*i)[0]==GROUP_NUM){
-                i=table.erase(i);
-            }else{
-                i++;
-            }
-        }
-    }
-    void init(){
-        initGroupTableAll();
-    }
-    UInt test(const std::vector<int> data){
+    UInt test(const std::array<int,MAX_ITEM> data){
         UInt maxSum=0;
         if(data.size()!=MAX_ITEM)return false;
         for(auto i=table.begin();i!=table.end();i++){
@@ -95,6 +72,7 @@ public:
         return maxSum;
     }
 };
+using Grouper = BaseGrouper<5,3>;
 
 #include <QTime>
 
@@ -107,14 +85,10 @@ int main(int argc, char *argv[])
     h.init();
     qDebug()<<"init cost time"<<timer.elapsed();
     timer.restart();
-    h.removeDuplicated();
-    qDebug()<<"remove duplicated cost time"<<timer.elapsed();
-    /*int maxitem=h.table.size();
-    for(int i=0;i<maxitem/2;i++){
-        h.table.pop_back();
-    }*/
-    timer.restart();
-    std::vector<int> data={1,2,3,4,5,6,7,8,9,10};
+    std::array<int,Grouper::MAX_ITEM> data;
+    for(int i=0;i<Grouper::MAX_ITEM;i++){
+        data[i]=i+1;
+    }
     auto maxSum=h.test(data);
     std::cout<<"maxSum="<<maxSum<<"\r\n";
     qDebug()<<"test cost time"<<timer.elapsed()<<"real table="<<h.table.size();
