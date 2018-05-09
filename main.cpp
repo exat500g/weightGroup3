@@ -9,8 +9,23 @@
 #include <stdlib.h>
 #include <set>
 
-//static_assert(GROUP_MAX_ITEM<sizeof(UInt)*8,"invalid BITNUM");
-//using Bit = std::bitset<BITNUM>;
+std::ostream& operator<<( std::ostream& os, const std::array<int,15>& data){
+    for(int i=0;i<15;i++){
+        os<<data[i]<<",";
+    }
+    return os;
+}
+std::ostream& operator<<( std::ostream& os, const std::array<int,10>& data){
+    for(int i=0;i<10;i++){
+        os<<data[i]<<",";
+    }
+    return os;
+}
+void printArray(const int* arr,int size){
+    for(int i=0;i<size;i++){
+        std::cout<<arr[i]<<",";
+    }
+}
 
 template<int GROUP_SIZE,int GROUP_NUM>
 class BaseGrouper{
@@ -20,8 +35,6 @@ public:
     //static constexpr int GROUP_SIZE=5;
     //static constexpr int GROUP_NUM=3;
     static constexpr int MAX_ITEM=GROUP_SIZE*GROUP_NUM;
-    using Int = int64_t;
-    using UInt = uint32_t;
     using Group = std::array<int,MAX_ITEM>;
     std::list<Group> table;
     std::set<std::array<int,GROUP_NUM>> sortedSet;
@@ -54,43 +67,112 @@ public:
                 table.push_back(vec);
             }
         }while(std::next_permutation(vec.begin(),vec.end()));
-        std::cout<<"table="<<table.size()<<"\r\n";
+        std::cout<<"GROUP_NUM="<<GROUP_NUM<<",table="<<table.size()<<"\r\n";
     }
-    UInt test(const std::array<int,MAX_ITEM> data){
-        UInt maxSum=0;
-        if(data.size()!=MAX_ITEM)return false;
+    int test(const int* data){
+        std::cout<<"grouping"<<GROUP_NUM<<"(";
+        printArray(data,MAX_ITEM);
+        std::cout<<"):";
+        int error=10000;
         for(auto i=table.begin();i!=table.end();i++){
-            UInt groupSum[GROUP_NUM]={0};
+            int groupSum[GROUP_NUM]={0};
+            bool succ=true;
             for(int j=0;j<MAX_ITEM;j++){
                 int group=(*i)[j];
                 groupSum[group] += data[j];
             }
-            if(groupSum[0] > maxSum){
-                maxSum=groupSum[0];
+            int currentError=0;
+            for(int j=0;j<GROUP_NUM;j++){
+                currentError += groupSum[j]-1250;
+                if(groupSum[j] < 1250-20 || groupSum[j] > 1250+100){
+                    succ=false;
+                }
+            }
+            if(currentError < error){
+                error=currentError;
+            }
+            if(succ){
+                std::cout<<" succ:"<<(*i)<<"error="<<error<<"\r\n";
+                return 1;
+                break;
             }
         }
-        return maxSum;
+        std::cout<<"failed,error="<<error<<"\r\n";
+        return 0;
     }
 };
-using Grouper = BaseGrouper<5,3>;
+using Grouper3 = BaseGrouper<5,3>;
+using Grouper2 = BaseGrouper<5,2>;
+
+int test(const int* data){
+    std::cout<<"grouping1"<<"(";
+    printArray(data,5);
+    std::cout<<"):";
+    bool succ=true;
+    int groupSum=0;
+    for(int j=0;j<5;j++){
+        groupSum += data[j];
+    }
+    if(groupSum < 1250-20 || groupSum > 1250+100){
+        succ=false;
+    }
+    if(succ){
+        std::cout<<" succ:"<<"\r\n";
+        return 1;
+    }
+    std::cout<<"failed\r\n";
+    return 0;
+}
 
 #include <QTime>
 
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
-    Grouper h;
+    Grouper3 grouper3;
+    Grouper2 grouper2;
     QTime timer;
     timer.restart();
-    h.init();
+    grouper2.init();
+    grouper3.init();
     qDebug()<<"init cost time"<<timer.elapsed();
-    timer.restart();
-    std::array<int,Grouper::MAX_ITEM> data;
-    for(int i=0;i<Grouper::MAX_ITEM;i++){
-        data[i]=i+1;
+    int total=0;
+    int miss=0;
+    constexpr int TEST_SIZE=1000;
+    std::array<int,TEST_SIZE> data;
+    for(int i=0;i<TEST_SIZE;i++){
+        data[i]=std::rand()%30+235;
     }
-    auto maxSum=h.test(data);
-    std::cout<<"maxSum="<<maxSum<<"\r\n";
-    qDebug()<<"test cost time"<<timer.elapsed()<<"real table="<<h.table.size();
+    int lp=0;
+    while(1){
+        timer.restart();
+        if(lp+15>1000){
+            break;
+        }
+        int result;
+        result=grouper3.test(data.data()+lp);
+        if(result){
+            lp+=grouper3.MAX_ITEM;
+            total+=grouper3.MAX_ITEM;
+        }else if(result==0){
+            result=grouper2.test(data.data()+lp);
+            if(result){
+                lp+=grouper2.MAX_ITEM;
+                total+=grouper2.MAX_ITEM;
+            }else if(result==0){
+                result=test(data.data()+lp);
+                if(result==0){
+                    miss++;
+                    total++;
+                    lp+=1;
+                }else{
+                    lp+=5;
+                    total+=5;
+                }
+            }
+        }
+        qDebug()<<"test cost time"<<timer.elapsed()<<"total="<<total<<"miss="<<miss;
+    }
+    system("pause");
     return a.exec();
 }
