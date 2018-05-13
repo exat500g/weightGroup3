@@ -1,13 +1,19 @@
-#include <QCoreApplication>
 #include <iostream>
-#include <QDebug>
 #include <bitset>
-#include <QBitArray>
 #include <vector>
 #include <algorithm>
-#include <stdio.h>
-#include <stdlib.h>
 #include <set>
+#include <array>
+#include <list>
+#include <time.h>
+
+std::ostream& operator<<( std::ostream& os, const std::array<int,20>& data){
+    for(int i=0;i<20;i++){
+        os<<data[i]<<",";
+    }
+    return os;
+}
+
 
 std::ostream& operator<<( std::ostream& os, const std::array<int,15>& data){
     for(int i=0;i<15;i++){
@@ -124,28 +130,25 @@ int test(const int* data){
     return 0;
 }
 
-#include <QTime>
-
 int main(int argc, char *argv[])
 {
-    QCoreApplication a(argc, argv);
+    std::srand(time(0));
     Grouper3 grouper3;
     Grouper2 grouper2;
-    QTime timer;
-    timer.restart();
     grouper2.init();
     grouper3.init();
-    qDebug()<<"init cost time"<<timer.elapsed();
     int total=0;
     int miss=0;
+    int itemErr=10;
+    int itemMid=250;
     constexpr int TEST_SIZE=1000;
     std::array<int,TEST_SIZE> data;
+again:
     for(int i=0;i<TEST_SIZE;i++){
-        data[i]=std::rand()%30+235;
+        data[i]=std::rand()%(itemErr*2)+itemMid - itemErr;
     }
     int lp=0;
     while(1){
-        timer.restart();
         if(lp+15>1000){
             break;
         }
@@ -171,8 +174,8 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        qDebug()<<"test cost time"<<timer.elapsed()<<"total="<<total<<"miss="<<miss;
     }
     system("pause");
-    return a.exec();
+    goto again;
+    return 0;
 }
